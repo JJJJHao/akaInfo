@@ -2,9 +2,13 @@ const akaManager = "tz1WCYsbPyHTBcnj4saWG6SRFHECCj2TTzC6"
 const tdManager = "tz1hmpmvpEzrdcvYjunNEGGEtSQgSEwt39ge"
 const akaMinter = "KT1ULea6kxqiYe1A7CZVfMuGmTx7NmDGAph1"
 const akaNFTContract = "KT1AFq5XorPduoYyWxs5gEyrFK6fVjJVbtCj"
+const collectionAPI = "https://akaswap.com/data/collections_mainnet.json"
 const transactionAPI = "https://api.tzkt.io/v1/operations/transactions"
+const storageAPI = "https://api.tzkt.io/v1/contracts/{0}/storage"
+const bigmapAPI = "https://api.tzkt.io/v1/bigmaps/{0}/keys"
 const opHashLink = "https://tzkt.io/"
 const objktGraphqlAPI = "https://data.objkt.com/v3/graphql"
+
 
 const akaAuction = "KT1B2BN4qgmtsaoLRhhnFVDNoTyybwTfdrE4"
 const akaBundleV2 = "KT1SbPeJafLwJvp39ZMTfM4giNSghym3FJk8"
@@ -33,11 +37,19 @@ const allResultID = [
     "akaDAO-price-result",
     "akaDAO-exchange-result"
 ]
+
 const allHintID = [
     "akaWallet-hint",
     "tdWallet-hint",
     "akaStat-hint",
     "akaDAO-hint"
+]
+
+const ignoreCollectionList = [
+    "hicetnunc",
+    "fxhash-genesis",
+    "fxhash",
+    "fxparams"
 ]
 
 async function getAPIData(APIUrl, params = {}) {
@@ -111,9 +123,9 @@ async function getBurnedTokenData(startDatePlusStr, endDatePlusStr) {
     return result
 }
 
-function setFetching(elementId) {
+function setFetching(elementId, msg = "Fetching data...") {
     document.getElementById(elementId).className = "alert alert-primary"
-    document.getElementById(elementId).innerHTML = "Fetching data..."
+    document.getElementById(elementId).innerHTML = msg
 }
 
 function setSuccess(elementId, msg) {
@@ -298,7 +310,7 @@ async function search() {
 
     setSuccess("tdWallet-hint", "Done!")
     setFetching("akaStat-hint")
-
+    
     // mint
     const akaMintData = await getAPIData(transactionAPI,
         {
@@ -424,16 +436,16 @@ async function search() {
     )
     if (akaDAOQuipuData.length > 0) {
         let priceResult = ""
-        priceAdd = Math.floor(akaDAOQuipuData.length / (priceCount-1))
-        for(let i = 0; i < priceCount; i++){
-            const idx = (i*priceAdd >= akaDAOQuipuData.length)? (akaDAOQuipuData.length-1):(i*priceAdd)
+        priceAdd = Math.floor(akaDAOQuipuData.length / (priceCount - 1))
+        for (let i = 0; i < priceCount; i++) {
+            const idx = (i * priceAdd >= akaDAOQuipuData.length) ? (akaDAOQuipuData.length - 1) : (i * priceAdd)
             let opDataList = await fetch(transactionAPI + "/" + akaDAOQuipuData[idx].hash).then(response => response.json())
-            for(let j = 0; j < opDataList.length; j++){
+            for (let j = 0; j < opDataList.length; j++) {
                 const opData = opDataList[j]
-                if(opData.target.address == akaDAOQuipuExchange){
-                    const price = parseFloat(opData.storage.storage.tez_pool)/parseFloat(opData.storage.storage.token_pool)
-                    const roundPrice = Math.round(price*1000)/1000
-                    if(i > 0)
+                if (opData.target.address == akaDAOQuipuExchange) {
+                    const price = parseFloat(opData.storage.storage.tez_pool) / parseFloat(opData.storage.storage.token_pool)
+                    const roundPrice = Math.round(price * 1000) / 1000
+                    if (i > 0)
                         priceResult += " → "
                     priceResult += roundPrice.toString() + " tez"
                     break
@@ -444,9 +456,9 @@ async function search() {
         let exchangeResult = ""
         let buySum = 0
         let sellSum = 0
-        for(let i = 0; i < akaDAOQuipuData.length; i++){
+        for (let i = 0; i < akaDAOQuipuData.length; i++) {
             const opData = akaDAOQuipuData[i]
-            if(opData.parameter.entrypoint == "tezToTokenPayment"){
+            if (opData.parameter.entrypoint == "tezToTokenPayment") {
                 const buyAmount = opData.amount
                 buySum += buyAmount
                 let name = opData.sender.alias
@@ -454,18 +466,18 @@ async function search() {
                     name = opData.sender.address
                 exchangeResult += "<a href=\"" + opHashLink + opData.sender.address + "\" target=\"_blank\">" + name + "</a> <a href=\"" + opHashLink + opData.hash + "\" target=\"_blank\">購買</a> " + (buyAmount / 1000000).toString() + " tez<br/>"
             }
-            else{
+            else {
                 const sellAmount = parseInt(opData.parameter.value.amount)
                 sellSum += sellAmount
                 let name = opData.sender.alias
                 if (name == undefined || name == "")
                     name = opData.sender.address
-                exchangeResult += "<a href=\"" + opHashLink + opData.sender.address + "\" target=\"_blank\">" + name  + "</a> <a href=\"" + opHashLink + opData.hash + "\" target=\"_blank\">出售</a> " + (sellAmount / 1000000).toString() + " akaDAO<br/>"
+                exchangeResult += "<a href=\"" + opHashLink + opData.sender.address + "\" target=\"_blank\">" + name + "</a> <a href=\"" + opHashLink + opData.hash + "\" target=\"_blank\">出售</a> " + (sellAmount / 1000000).toString() + " akaDAO<br/>"
             }
         }
-        exchangeResult = 
-        "共計購買 <b>" + (buySum / 1000000).toString() + "</b> tez<br/>" +
-        "共計出售 <b>" + (sellSum / 1000000).toString() + "</b> akaDAO<br/>" + exchangeResult
+        exchangeResult =
+            "共計購買 <b>" + (buySum / 1000000).toString() + "</b> tez<br/>" +
+            "共計出售 <b>" + (sellSum / 1000000).toString() + "</b> akaDAO<br/>" + exchangeResult
         document.getElementById("akaDAO-exchange-result").innerHTML = exchangeResult
     }
     else {
@@ -473,4 +485,55 @@ async function search() {
         document.getElementById("akaDAO-exchange-result").innerHTML = "NO DATA"
     }
     setSuccess("akaDAO-hint", "Done!")
+}
+
+async function fetchHolders() {
+    
+    document.getElementById("akaCollectionSection").style.display = "block"
+    document.getElementById("akaCollection-result").innerHTML = ""
+    document.getElementById("akaCollection-hint").className = ""
+    document.getElementById("akaCollection-hint").innerHTML = ""
+    
+    const collectionInfo = await fetch(collectionAPI).then(response => response.json())
+    const ignoreCollectionSet = new Set(ignoreCollectionList)
+    let collectionResult = ""
+    let totalTokenCount = 0
+    let allCollectorSet = new Set()
+    let allNonZeroCollectorSet = new Set()
+    for (const [collectionKey, collectionData] of Object.entries(collectionInfo.fa2)) {
+        if (ignoreCollectionSet.has(collectionKey))
+            continue
+            
+        const fa2Addr = collectionData.addr
+        const collectionName = collectionData.title
+        setFetching("akaCollection-hint", "Fetching data in " + collectionName + " collection...")
+        // Get ledger bigmap number
+        const storageAPIResult = await fetch(storageAPI.replace("{0}", fa2Addr)).then(response => response.json())
+        const ledgerBigMapNum = (storageAPIResult.ledger).toString()
+        // Find ledger datas
+        let collectorSet = new Set()
+        let nonZeroCollectorSet = new Set()
+        let tokenIDSet = new Set()
+        const allKeyData = await getAPIData(bigmapAPI.replace("{0}", ledgerBigMapNum))
+        allKeyData.forEach((keyData, idx) => {
+            const collectorAddr = keyData.key.address
+            tokenIDSet.add(keyData.key.nat)
+            if (parseInt(keyData.value) > 0) {
+                allNonZeroCollectorSet.add(collectorAddr)
+                nonZeroCollectorSet.add(collectorAddr)
+            }
+            allCollectorSet.add(collectorAddr)
+            collectorSet.add(collectorAddr)
+        })
+        // console.log(nonZeroCollectorSet.size)
+        // console.log(collectorSet.size)
+        collectionResult += collectionName + " - 現有" + (nonZeroCollectorSet.size).toString() + "位，曾有" + (collectorSet.size).toString() + "位。 共計" + (tokenIDSet.size).toString() + "個token<br/>"
+        document.getElementById("akaCollection-result").innerHTML = collectionResult
+        totalTokenCount += tokenIDSet.size
+    }
+    collectionResult += "<hr><b>統計 - 現有" + (allNonZeroCollectorSet.size).toString() + "位，曾有" + (allCollectorSet.size).toString() + "位。 共計" + totalTokenCount.toString() + "個token</b><br/>"
+    
+    document.getElementById("akaCollection-result").innerHTML = collectionResult
+    setSuccess("akaCollection-hint", "Done!")
+
 }

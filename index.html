@@ -48,6 +48,27 @@
                         Search
                     </button>
                 </div>
+                <div class="col-1 ps-0">
+                </div>
+                <div class="col-2 ps-0">
+                    <button onclick="fetchHolders()" class="btn btn-warning">
+                        查詢持有人數
+                    </button>
+                </div>
+            </div>
+            <div id="akaCollectionSection" style="display:none">
+                <div class="alert alert-info" role="alert">
+                    <h3>Token持有狀況</h3>
+                </div>
+                <div role="alert" id="akaCollection-hint">
+                </div>
+                <div>
+                    <h4>各collection持有人數</h4>
+                    <h6>
+                        <font color="red">(註：此數據與時間無關)</font>
+                    </h6>
+                    <p id="akaCollection-result"></p>
+                </div>
             </div>
             <div class="alert alert-dark" role="alert">
                 <h3>akaSwap錢包收益</h3>
