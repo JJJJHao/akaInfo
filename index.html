@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script src="main.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <!-- <style>
+        ::-webkit-scrollbar{
+            background-color: transparent; 
+            width: 5px;
+        }
+        ::-webkit-scrollbar-thumb{
+            background-color: #9e9e9e; 
+            border-radius: 3px;
+        }
+    </style> -->
+</head>
+
+<body style="overflow-y:scroll;max-height:100%">
+    <div style="overflow-y:scroll;max-height:100vh">
+        <div class="container mt-5">
+            <h1>資訊查查查</h1>
+            <div class="mb-2 row">
+                <div class="col-1 pt-1 pe-0">
+                    From
+                </div>
+                <div class="col-3">
+                    <input id="startDate" class="form-control" type="date" />
+                </div>
+                <div class="col-1 ps-0 pt-1">
+                    0 a.m.
+                </div>
+            </div>
+            <div class="mb-2 row">
+                <div class="col-1 pt-1 pe-0">
+                    To
+                </div>
+                <div class="col-3">
+                    <input id="endDate" class="form-control" type="date" />
+                </div>
+                <div class="col-1 ps-0 pt-1">
+                    0 a.m.
+                </div>
+                <div class="col-1 ps-0">
+                    <button onclick="search()" class="btn btn-dark">
+                        Search
+                    </button>
+                </div>
+            </div>
+            <div class="alert alert-dark" role="alert">
+                <h3>akaSwap錢包收益</h3>
+            </div>
+            <div role="alert" id="akaWallet-hint">
+            </div>
+            <div>
+                <h4>收入</h4>
+                <p id="akaRec-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>支出</h4>
+                <p id="akaSend-result"></p>
+                <p id="akaSend-result-list"></p>
+            </div>
+            <div class="alert alert-dark" role="alert">
+                <h3>Tez Dozen錢包收益</h3>
+            </div>
+            <div role="alert" id="tdWallet-hint">
+            </div>
+            <div>
+                <h4>收入</h4>
+                <p id="tdRec-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>支出</h4>
+                <p id="tdSend-result"></p>
+                <p id="tdSend-result-list"></p>
+            </div>
+            <div class="alert alert-dark" role="alert">
+                <h3>akaSwap各項人數統計</h3>
+            </div>
+            <div role="alert" id="akaStat-hint">
+            </div>
+            <div>
+                <h4>akaOBJ鑄造量</h4>
+                <p id="akaMint-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>買家人數</h4>
+                <p id="akaBuyer-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>賣家人數</h4>
+                <p id="akaSeller-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>其他相關人數</h4>
+                <p id="akaPeople-result"></p>
+            </div>
+            <div class="alert alert-dark" role="alert">
+                <h3>akaDAO quipuswap資訊</h3>
+            </div>
+            <div role="alert" id="akaDAO-hint">
+            </div>
+            <div>
+                <h4>價格起伏</h4>
+                <p id="akaDAO-price-result"></p>
+            </div>
+            <hr>
+            <div>
+                <h4>買賣流動</h4>
+                <p id="akaDAO-exchange-result"></p>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
