@@ -18,6 +18,18 @@ const akaOffer = "KT1J2C7BsYNnSjQsGoyrSXShhYGkrDDLVGDd"
 const akaMetaverseV2 = "KT1Dn3sambs7KZGW88hH2obZeSzfmCmGvpFo"
 const akaMetaverseV1 = "KT1HGL8vx7DP4xETVikL4LUYvFxSV19DxdFN"
 
+const akaChargeV1 = "KT1TZLHB88sPT6z4w7oe13F1pgZpRc4tSHjL"
+const akaChargeV2 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
+
+let chargeFeeListV1 = []
+let chargeFeeListV2 = []
+
+const akaDropChargeNameMap = {
+    "AKADROP_MAKE_POOL_EDITION_TEZ": "版次費",
+    "AKADROP_MAKE_POOL_TEZ": "開辦費",
+    "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費"
+}
+
 const akaDAOQuipuExchange = "KT1Qej1k8WxPvBLUjGVtFXStgzQtcx3itSk5"
 const priceCount = 5
 
@@ -27,6 +39,8 @@ const allResultID = [
     "akaRec-result",
     "akaSend-result",
     "akaSend-result-list",
+    "akaDrop-result",
+    "akaDrop-result-list",
     "tdRec-result",
     "tdSend-result",
     "tdSend-result-list",
@@ -40,6 +54,7 @@ const allResultID = [
 
 const allHintID = [
     "akaWallet-hint",
+    "akaDrop-hint",
     "tdWallet-hint",
     "akaStat-hint",
     "akaDAO-hint"
@@ -123,6 +138,58 @@ async function getBurnedTokenData(startDatePlusStr, endDatePlusStr) {
     return result
 }
 
+async function generateChargeFeeList(){
+    const updateChargeV1Data = await getAPIData(transactionAPI,
+        {
+            "target": akaChargeV1,
+            "status": "applied",
+            "entrypoint": "_update_charge_data",
+            "sort.asc": "level"
+        }
+    )
+    
+    let feeMap = {}
+    for (let i = 0; i < updateChargeV1Data.length; i++) {
+        const updateData = updateChargeV1Data[i].parameter.value
+        for(let j = 0; j < updateData.length; j++){
+            const feeData = updateData[j]
+            feeMap[feeData.charge_type] = {
+                "per": parseInt(feeData.charge_data.per),
+                "price": parseInt(feeData.charge_data.price.tez)
+            }
+        }
+        chargeFeeListV1.push({
+            "startTime": Date.parse(updateChargeV1Data[i].timestamp),
+            "feeMap": JSON.parse(JSON.stringify(feeMap))
+        })
+    }
+
+    const updateChargeV2Data = await getAPIData(transactionAPI,
+        {
+            "target": akaChargeV2,
+            "status": "applied",
+            "entrypoint": "_update_charge_data",
+            "sort.asc": "level"
+        }
+    )
+    feeMap = {}
+    for (let i = 0; i < updateChargeV2Data.length; i++) {
+        const updateData = updateChargeV2Data[i].parameter.value
+        for(let j = 0; j < updateData.length; j++){
+            const feeData = updateData[j]
+            feeMap[feeData["charge_type"]] = {
+                "per": parseInt(feeData.charge_data.per),
+                "price": parseInt(feeData.charge_data.price.tez)
+            }
+        }
+        chargeFeeListV2.push({
+            "startTime": Date.parse(updateChargeV2Data[i].timestamp),
+            "feeMap": JSON.parse(JSON.stringify(feeMap))
+        })
+    }
+}
+
+
 function setFetching(elementId, msg = "Fetching data...") {
     document.getElementById(elementId).className = "alert alert-primary"
     document.getElementById(elementId).innerHTML = msg
@@ -152,6 +219,13 @@ function sendOpHashMap2Link(data) {
     return result
 }
 
+function sendOpHashMap2Link(data) {
+    let result = "支出詳細:<br/>"
+    for (const [key, value] of Object.entries(data))
+        result += "<a href=\"" + opHashLink + key + "\" target=\"_blank\">" + (value.amount / 1000000).toString() + " tez → " + value.name + "</a><br/>"
+    return result
+}
+
 function clearResult() {
     for (let i = 0; i < allResultID.length; i++)
         document.getElementById(allResultID[i]).innerHTML = ""
@@ -160,6 +234,121 @@ function clearResult() {
         document.getElementById(allHintID[i]).innerHTML = ""
     }
 
+}
+
+async function fetchAkaDrop(startTimestamp, endTimestamp){
+// async function fetchAkaDrop(startTimestamp = "2023-08-01T00:00:00Z", endTimestamp = "2023-08-30T00:00:00Z"){
+    setFetching("akaDrop-hint")
+
+    await generateChargeFeeList()
+
+    let chargeAmountMap = {}
+    let detailList = []
+
+    const chargeDataV1 = await getAPIData(transactionAPI,
+        {
+            "target": akaChargeV1,
+            "status": "applied",
+            "entrypoint": "charge",
+            "timestamp.ge": startTimestamp,
+            "timestamp.lt": endTimestamp
+        }
+    )
+    for(let i = 0; i < chargeDataV1.length; i++){
+        const chargeDataList = chargeDataV1[i].parameter.value
+        let feeIndex = -1
+        for(let j = 0; j < chargeFeeListV1.length; j++){
+            if(Date.parse(chargeDataV1[i].timestamp) < chargeFeeListV1[j].startTime)
+                break
+            feeIndex += 1
+        }
+        let consumerName = chargeDataV1[i].initiator.alias
+        if (consumerName == undefined || consumerName == "")
+            consumerName = chargeDataV1[i].initiator.address
+        consumerDetail = {
+            "consumer": consumerName,
+            "address": chargeDataV1[i].initiator.address,
+            "opHash": chargeDataV1[i].hash,
+            "charge": {}
+        }
+        for(let j = 0; j < chargeDataList.length; j++){
+            const chargeData = chargeDataList[j]
+            const feeData = chargeFeeListV1[feeIndex]["feeMap"][chargeData.charge_name]
+            const chargeAmount = parseInt(chargeData.amount)
+            const price = Math.ceil(chargeAmount/feeData.per) * feeData.price
+            if(!(chargeData.charge_name in chargeAmountMap))
+                chargeAmountMap[chargeData.charge_name] = 0
+            chargeAmountMap[chargeData.charge_name] += price
+            consumerDetail.charge[chargeData.charge_name] = price
+        }
+        detailList.push(consumerDetail)
+    }
+
+    const chargeDataV2 = await getAPIData(transactionAPI,
+        {
+            "target": akaChargeV2,
+            "status": "applied",
+            "entrypoint": "charge",
+            "timestamp.ge": startTimestamp,
+            "timestamp.lt": endTimestamp
+        }
+    )
+
+    
+    for(let i = 0; i < chargeDataV2.length; i++){
+        const chargeDataList = chargeDataV2[i].parameter.value
+        let feeIndex = -1
+        for(let j = 0; j < chargeFeeListV2.length; j++){
+            if(Date.parse(chargeDataV2[i].timestamp) < chargeFeeListV2[j].startTime)
+                break
+            feeIndex += 1
+        }
+        let consumerName = chargeDataV2[i].initiator.alias
+        if (consumerName == undefined || consumerName == "")
+            consumerName = chargeDataV2[i].initiator.address
+        consumerDetail = {
+            "consumer": consumerName,
+            "address": chargeDataV2[i].initiator.address,
+            "opHash": chargeDataV2[i].hash,
+            "charge": {}
+        }
+        for(let j = 0; j < chargeDataList.length; j++){
+            const chargeData = chargeDataList[j]
+            const feeData = chargeFeeListV2[feeIndex]["feeMap"][chargeData.charge_name]
+            const chargeAmount = parseInt(chargeData.amount)
+            const price = Math.ceil(chargeAmount/feeData.per) * feeData.price
+            if(!(chargeData.charge_name in chargeAmountMap))
+                chargeAmountMap[chargeData.charge_name] = 0
+            chargeAmountMap[chargeData.charge_name] += price
+            consumerDetail.charge[chargeData.charge_name] = price
+        }
+        detailList.push(consumerDetail)
+    }
+    
+    let akaDropResult = ""
+    for(const [key, value] of Object.entries(chargeAmountMap))
+        akaDropResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
+    document.getElementById("akaDrop-result").innerHTML = akaDropResult
+
+    
+    let akaDropListResult = ""
+    for(let i = 0; i < detailList.length; i++){
+        const detailData = detailList[i]
+        akaDropListResult += "<a href=\"" + opHashLink + detailData.address + "\" target=\"_blank\">" + detailData.consumer + "</a> "
+        akaDropListResult += "<a href=\"" + opHashLink + detailData.opHash + "\" target=\"_blank\">製作Drop</a><br/>"
+        let totalAmount = 0
+        for(const [key, value] of Object.entries(detailData.charge))
+            if(value > 0){
+                totalAmount += value
+                akaDropListResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
+            }
+        akaDropListResult += "<b>共計花費 " + (totalAmount / 1000000).toString() + " tez</b><br/>"
+    }
+    document.getElementById("akaDrop-result-list").innerHTML = akaDropListResult
+
+    // akaDropChargeNameMap
+
+    setSuccess("akaDrop-hint", "Done!")
 }
 
 
@@ -246,6 +435,9 @@ async function search() {
     document.getElementById("akaSend-result-list").innerHTML = sendOpHashMap2Link(sendOpHashMap)
 
     setSuccess("akaWallet-hint", "Done!")
+    
+    await fetchAkaDrop(startDateZStr, endDateZStr)
+
     setFetching("tdWallet-hint")
 
     // rec
