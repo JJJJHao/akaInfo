@@ -64,7 +64,8 @@ const ignoreCollectionList = [
     "hicetnunc",
     "fxhash-genesis",
     "fxhash",
-    "fxparams"
+    "fxparams",
+    "momapostcard"
 ]
 
 async function getAPIData(APIUrl, params = {}) {
@@ -138,7 +139,7 @@ async function getBurnedTokenData(startDatePlusStr, endDatePlusStr) {
     return result
 }
 
-async function generateChargeFeeList(){
+async function generateChargeFeeList() {
     const updateChargeV1Data = await getAPIData(transactionAPI,
         {
             "target": akaChargeV1,
@@ -147,11 +148,11 @@ async function generateChargeFeeList(){
             "sort.asc": "level"
         }
     )
-    
+
     let feeMap = {}
     for (let i = 0; i < updateChargeV1Data.length; i++) {
         const updateData = updateChargeV1Data[i].parameter.value
-        for(let j = 0; j < updateData.length; j++){
+        for (let j = 0; j < updateData.length; j++) {
             const feeData = updateData[j]
             feeMap[feeData.charge_type] = {
                 "per": parseInt(feeData.charge_data.per),
@@ -175,7 +176,7 @@ async function generateChargeFeeList(){
     feeMap = {}
     for (let i = 0; i < updateChargeV2Data.length; i++) {
         const updateData = updateChargeV2Data[i].parameter.value
-        for(let j = 0; j < updateData.length; j++){
+        for (let j = 0; j < updateData.length; j++) {
             const feeData = updateData[j]
             feeMap[feeData["charge_type"]] = {
                 "per": parseInt(feeData.charge_data.per),
@@ -236,8 +237,44 @@ function clearResult() {
 
 }
 
-async function fetchAkaDrop(startTimestamp, endTimestamp){
-// async function fetchAkaDrop(startTimestamp = "2023-08-01T00:00:00Z", endTimestamp = "2023-08-30T00:00:00Z"){
+function flatten(data) {
+    var result = {};
+    function recurse(cur, prop) {
+        if (Object(cur) !== cur) {
+            result[prop] = cur;
+        } else if (Array.isArray(cur)) {
+            for (var i = 0, l = cur.length; i < l; i++)
+                recurse(cur[i], prop + "[" + i + "]");
+            if (l == 0)
+                result[prop] = [];
+        } else {
+            var isEmpty = true;
+            for (var p in cur) {
+                isEmpty = false;
+                recurse(cur[p], prop ? prop + "." + p : p);
+            }
+            if (isEmpty && prop)
+                result[prop] = {};
+        }
+    }
+    recurse(data, "");
+    return result;
+}
+
+function findLedgerBigMapNum(storageData) {
+    if ("ledger" in storageData)
+        return (storageData.ledger).toString()
+    const flattenData = flatten(storageData)
+    let allKeys = Object.keys(flattenData)
+    for(let i = 0; i < allKeys.length; i++){
+        if (allKeys[i].endsWith(".ledger"))
+            return (flattenData[allKeys[i]]).toString()
+    }
+    return "-1"
+}
+
+async function fetchAkaDrop(startTimestamp, endTimestamp) {
+    // async function fetchAkaDrop(startTimestamp = "2023-08-01T00:00:00Z", endTimestamp = "2023-08-30T00:00:00Z"){
     setFetching("akaDrop-hint")
 
     await generateChargeFeeList()
@@ -254,11 +291,11 @@ async function fetchAkaDrop(startTimestamp, endTimestamp){
             "timestamp.lt": endTimestamp
         }
     )
-    for(let i = 0; i < chargeDataV1.length; i++){
+    for (let i = 0; i < chargeDataV1.length; i++) {
         const chargeDataList = chargeDataV1[i].parameter.value
         let feeIndex = -1
-        for(let j = 0; j < chargeFeeListV1.length; j++){
-            if(Date.parse(chargeDataV1[i].timestamp) < chargeFeeListV1[j].startTime)
+        for (let j = 0; j < chargeFeeListV1.length; j++) {
+            if (Date.parse(chargeDataV1[i].timestamp) < chargeFeeListV1[j].startTime)
                 break
             feeIndex += 1
         }
@@ -271,12 +308,12 @@ async function fetchAkaDrop(startTimestamp, endTimestamp){
             "opHash": chargeDataV1[i].hash,
             "charge": {}
         }
-        for(let j = 0; j < chargeDataList.length; j++){
+        for (let j = 0; j < chargeDataList.length; j++) {
             const chargeData = chargeDataList[j]
             const feeData = chargeFeeListV1[feeIndex]["feeMap"][chargeData.charge_name]
             const chargeAmount = parseInt(chargeData.amount)
-            const price = Math.ceil(chargeAmount/feeData.per) * feeData.price
-            if(!(chargeData.charge_name in chargeAmountMap))
+            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
+            if (!(chargeData.charge_name in chargeAmountMap))
                 chargeAmountMap[chargeData.charge_name] = 0
             chargeAmountMap[chargeData.charge_name] += price
             consumerDetail.charge[chargeData.charge_name] = price
@@ -294,12 +331,12 @@ async function fetchAkaDrop(startTimestamp, endTimestamp){
         }
     )
 
-    
-    for(let i = 0; i < chargeDataV2.length; i++){
+
+    for (let i = 0; i < chargeDataV2.length; i++) {
         const chargeDataList = chargeDataV2[i].parameter.value
         let feeIndex = -1
-        for(let j = 0; j < chargeFeeListV2.length; j++){
-            if(Date.parse(chargeDataV2[i].timestamp) < chargeFeeListV2[j].startTime)
+        for (let j = 0; j < chargeFeeListV2.length; j++) {
+            if (Date.parse(chargeDataV2[i].timestamp) < chargeFeeListV2[j].startTime)
                 break
             feeIndex += 1
         }
@@ -312,33 +349,33 @@ async function fetchAkaDrop(startTimestamp, endTimestamp){
             "opHash": chargeDataV2[i].hash,
             "charge": {}
         }
-        for(let j = 0; j < chargeDataList.length; j++){
+        for (let j = 0; j < chargeDataList.length; j++) {
             const chargeData = chargeDataList[j]
             const feeData = chargeFeeListV2[feeIndex]["feeMap"][chargeData.charge_name]
             const chargeAmount = parseInt(chargeData.amount)
-            const price = Math.ceil(chargeAmount/feeData.per) * feeData.price
-            if(!(chargeData.charge_name in chargeAmountMap))
+            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
+            if (!(chargeData.charge_name in chargeAmountMap))
                 chargeAmountMap[chargeData.charge_name] = 0
             chargeAmountMap[chargeData.charge_name] += price
             consumerDetail.charge[chargeData.charge_name] = price
         }
         detailList.push(consumerDetail)
     }
-    
+
     let akaDropResult = ""
-    for(const [key, value] of Object.entries(chargeAmountMap))
+    for (const [key, value] of Object.entries(chargeAmountMap))
         akaDropResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
     document.getElementById("akaDrop-result").innerHTML = akaDropResult
 
-    
+
     let akaDropListResult = ""
-    for(let i = 0; i < detailList.length; i++){
+    for (let i = 0; i < detailList.length; i++) {
         const detailData = detailList[i]
         akaDropListResult += "<a href=\"" + opHashLink + detailData.address + "\" target=\"_blank\">" + detailData.consumer + "</a> "
         akaDropListResult += "<a href=\"" + opHashLink + detailData.opHash + "\" target=\"_blank\">製作Drop</a><br/>"
         let totalAmount = 0
-        for(const [key, value] of Object.entries(detailData.charge))
-            if(value > 0){
+        for (const [key, value] of Object.entries(detailData.charge))
+            if (value > 0) {
                 totalAmount += value
                 akaDropListResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
             }
@@ -350,7 +387,6 @@ async function fetchAkaDrop(startTimestamp, endTimestamp){
 
     setSuccess("akaDrop-hint", "Done!")
 }
-
 
 async function search() {
 
@@ -435,7 +471,7 @@ async function search() {
     document.getElementById("akaSend-result-list").innerHTML = sendOpHashMap2Link(sendOpHashMap)
 
     setSuccess("akaWallet-hint", "Done!")
-    
+
     await fetchAkaDrop(startDateZStr, endDateZStr)
 
     setFetching("tdWallet-hint")
@@ -502,7 +538,7 @@ async function search() {
 
     setSuccess("tdWallet-hint", "Done!")
     setFetching("akaStat-hint")
-    
+
     // mint
     const akaMintData = await getAPIData(transactionAPI,
         {
@@ -680,12 +716,12 @@ async function search() {
 }
 
 async function fetchHolders() {
-    
+
     document.getElementById("akaCollectionSection").style.display = "block"
     document.getElementById("akaCollection-result").innerHTML = ""
     document.getElementById("akaCollection-hint").className = ""
     document.getElementById("akaCollection-hint").innerHTML = ""
-    
+
     const collectionInfo = await fetch(collectionAPI).then(response => response.json())
     const ignoreCollectionSet = new Set(ignoreCollectionList)
     let collectionResult = ""
@@ -695,13 +731,13 @@ async function fetchHolders() {
     for (const [collectionKey, collectionData] of Object.entries(collectionInfo.fa2)) {
         if (ignoreCollectionSet.has(collectionKey))
             continue
-            
+
         const fa2Addr = collectionData.addr
         const collectionName = collectionData.title
         setFetching("akaCollection-hint", "Fetching data in " + collectionName + " collection...")
         // Get ledger bigmap number
         const storageAPIResult = await fetch(storageAPI.replace("{0}", fa2Addr)).then(response => response.json())
-        const ledgerBigMapNum = (storageAPIResult.ledger).toString()
+        const ledgerBigMapNum = findLedgerBigMapNum(storageAPIResult)
         // Find ledger datas
         let collectorSet = new Set()
         let nonZeroCollectorSet = new Set()
@@ -724,7 +760,7 @@ async function fetchHolders() {
         totalTokenCount += tokenIDSet.size
     }
     collectionResult += "<hr><b>統計 - 現有" + (allNonZeroCollectorSet.size).toString() + "位，曾有" + (allCollectorSet.size).toString() + "位。 共計" + totalTokenCount.toString() + "個token</b><br/>"
-    
+
     document.getElementById("akaCollection-result").innerHTML = collectionResult
     setSuccess("akaCollection-hint", "Done!")
 
