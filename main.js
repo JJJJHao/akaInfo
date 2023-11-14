@@ -2,6 +2,7 @@ const akaManager = "tz1WCYsbPyHTBcnj4saWG6SRFHECCj2TTzC6"
 const tdManager = "tz1hmpmvpEzrdcvYjunNEGGEtSQgSEwt39ge"
 const akaMinter = "KT1ULea6kxqiYe1A7CZVfMuGmTx7NmDGAph1"
 const akaNFTContract = "KT1AFq5XorPduoYyWxs5gEyrFK6fVjJVbtCj"
+const accountAPI = "https://api.tzkt.io/v1/accounts"
 const collectionAPI = "https://akaswap.com/data/collections_mainnet.json"
 const transactionAPI = "https://api.tzkt.io/v1/operations/transactions"
 const storageAPI = "https://api.tzkt.io/v1/contracts/{0}/storage"
@@ -20,6 +21,8 @@ const akaMetaverseV1 = "KT1HGL8vx7DP4xETVikL4LUYvFxSV19DxdFN"
 
 const akaChargeV1 = "KT1TZLHB88sPT6z4w7oe13F1pgZpRc4tSHjL"
 const akaChargeV2 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
+
+const akaBrokerV1 = "KT1PEdN7Ghy3WTzuWhQGdDM4NFD7J2xuZVNM"
 
 let chargeFeeListV1 = []
 let chargeFeeListV2 = []
@@ -190,6 +193,36 @@ async function generateChargeFeeList() {
     }
 }
 
+async function getAlias(address){
+    accountData = await fetch(accountAPI + "?address=" + address).then(response => response.json())
+    if (accountData == undefined || accountData.length == 0)
+        return address
+    else if (accountData[0].hasOwnProperty('alias'))
+        return accountData[0].alias
+    else
+        return address
+}
+
+async function getAliasMap(addresses){
+    let result = {}
+    const BATCH_NUM = 100
+    for(let i = 0; i < addresses.length; i += BATCH_NUM){
+        let lastIdx = i + BATCH_NUM
+        if(lastIdx >= addresses.length)
+            lastIdx = addresses.length
+        const subAddrs = addresses.slice(i, lastIdx)
+        
+        accountsData = await fetch(accountAPI + "?address.in=" + subAddrs.join(",")).then(response => response.json())
+        for(let j = 0; j < accountsData.length; j++){
+            const addr = accountsData[j].address
+            if ("alias" in accountsData[j])
+                result[addr] = accountsData[j].alias
+            else
+                result[addr] = addr
+        }
+    }
+    return result
+}
 
 function setFetching(elementId, msg = "Fetching data...") {
     document.getElementById(elementId).className = "alert alert-primary"
@@ -274,7 +307,6 @@ function findLedgerBigMapNum(storageData) {
 }
 
 async function fetchAkaDrop(startTimestamp, endTimestamp) {
-    // async function fetchAkaDrop(startTimestamp = "2023-08-01T00:00:00Z", endTimestamp = "2023-08-30T00:00:00Z"){
     setFetching("akaDrop-hint")
 
     await generateChargeFeeList()
@@ -388,6 +420,57 @@ async function fetchAkaDrop(startTimestamp, endTimestamp) {
     setSuccess("akaDrop-hint", "Done!")
 }
 
+async function fetchAkaBroker(startTimestamp, endTimestamp){
+    setFetching("akaBroker-hint")
+
+    const brokerDataV1 = await getAPIData(transactionAPI,
+        {
+            "target": akaBrokerV1,
+            "sender": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX",
+            "status": "applied",
+            "entrypoint": "buy_for",
+            "timestamp.ge": startTimestamp,
+            "timestamp.lt": endTimestamp
+        }
+    )
+
+    let buyerSet = new Set()
+    let totalAmount = 0
+    let resultList = []
+    let akaBrokerListResult = ""
+
+    for (let i = 0; i < brokerDataV1.length; i++) {
+        const buyForParam = brokerDataV1[i].parameter.value
+        resultList.push(
+            {
+                address: buyForParam.target,
+                hash: brokerDataV1[i].hash,
+                tezString: (brokerDataV1[i].amount / 1000000).toString()
+            }
+        )
+        
+        
+        buyerSet.add(buyForParam.target)
+        totalAmount += brokerDataV1[i].amount
+    }
+
+    const aliasMap = await getAliasMap(Array.from(buyerSet))
+
+    for(let i = 0; i < resultList.length; i++){
+        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].address + "\" target=\"_blank\">" + aliasMap[resultList[i].address] + "</a> "
+        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].hash + "\" target=\"_blank\">刷了 <b>" + resultList[i].tezString + "</b> tez</a><br/>"
+    }
+
+    document.getElementById("akaBroker-result").innerHTML = 
+    "共計 " + brokerDataV1.length.toString() + " 次刷卡購買<br/>" + 
+    "共有 " + buyerSet.size.toString() + " 人刷卡購買<br/>" + 
+    "共刷了 <b>" + (totalAmount / 1000000).toString() + "</b> tez <br/>"
+
+    document.getElementById("akaBroker-result-list").innerHTML = akaBrokerListResult
+
+    setSuccess("akaBroker-hint", "Done!")
+}
+
 async function search() {
 
     clearResult()
@@ -471,6 +554,8 @@ async function search() {
     document.getElementById("akaSend-result-list").innerHTML = sendOpHashMap2Link(sendOpHashMap)
 
     setSuccess("akaWallet-hint", "Done!")
+
+    await fetchAkaBroker(startDateZStr, endDateZStr)
 
     await fetchAkaDrop(startDateZStr, endDateZStr)
 
@@ -715,6 +800,7 @@ async function search() {
     setSuccess("akaDAO-hint", "Done!")
 }
 
+
 async function fetchHolders() {
 
     document.getElementById("akaCollectionSection").style.display = "block"
@@ -764,4 +850,23 @@ async function fetchHolders() {
     document.getElementById("akaCollection-result").innerHTML = collectionResult
     setSuccess("akaCollection-hint", "Done!")
 
+}
+
+
+async function test(){
+    fetchAkaBroker("2023-09-30T16:00:00Z", "2023-11-30T16:00:00Z")
+    // const collectData = await getAPIData(transactionAPI,
+    //     {
+    //         "target": akaMetaverseV2,
+    //         "entrypoint": "collect",
+    //         "status": "applied"
+    //     }
+    // )
+    // let addrSet = new Set()
+    // for(let i = 0; i < collectData.length; i++)
+    //     addrSet.add(collectData[i].sender.address)
+    
+    // console.log(addrSet)
+    // const result = await getAliasMap(Array.from(addrSet))
+    // console.log(result)
 }
