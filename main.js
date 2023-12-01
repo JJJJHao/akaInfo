@@ -426,7 +426,7 @@ async function fetchAkaBroker(startTimestamp, endTimestamp){
     const brokerDataV1 = await getAPIData(transactionAPI,
         {
             "target": akaBrokerV1,
-            "sender": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX",
+            "sender.in": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX,tz1UQrVHHrcvqiwdNTicGfQ6xwQPwCDnEm1d",
             "status": "applied",
             "entrypoint": "buy_for",
             "timestamp.ge": startTimestamp,
