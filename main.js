@@ -36,10 +36,13 @@ const akaDropChargeNameMap = {
 const akaDAOQuipuExchange = "KT1Qej1k8WxPvBLUjGVtFXStgzQtcx3itSk5"
 const priceCount = 5
 
-const allMarket = ([akaAuction, akaBundleV2, akaBundleV1, akaGacha, akaOffer, akaMetaverseV2, akaMetaverseV1]).join(",")
+const allMarketList = [akaAuction, akaBundleV2, akaBundleV1, akaGacha, akaOffer, akaMetaverseV2, akaMetaverseV1]
+const allMarketJoin = allMarketList.join(",")
 
 const allResultID = [
     "akaRec-result",
+    "akaBroker-result",
+    "akaBroker-result-list",
     "akaSend-result",
     "akaSend-result-list",
     "akaDrop-result",
@@ -57,6 +60,7 @@ const allResultID = [
 
 const allHintID = [
     "akaWallet-hint",
+    "akaBroker-hint",
     "akaDrop-hint",
     "tdWallet-hint",
     "akaStat-hint",
@@ -304,6 +308,15 @@ function findLedgerBigMapNum(storageData) {
             return (flattenData[allKeys[i]]).toString()
     }
     return "-1"
+}
+
+function generateNewSet(setMap, addrList){
+    addrList.forEach((addr, idx) => {
+        setMap[addr] = {
+            "set": new Set(),
+            "count": 0
+        }
+    })
 }
 
 async function fetchAkaDrop(startTimestamp, endTimestamp) {
@@ -649,7 +662,7 @@ async function search() {
     // buy
     const akaBuyData = await getAPIData(transactionAPI,
         {
-            "target.in": allMarket,
+            "target.in": allMarketJoin,
             "entrypoint.in": "bid,direct_purchase,collect_bundle,collect_gacha,make_offer,collect",
             "status": "applied",
             "timestamp.ge": startDateZStr,
@@ -657,38 +670,40 @@ async function search() {
         }
     )
     let akaAllSet = new Set()
-    let buySet = new Map()
-    buySet[akaAuction] = new Set()
-    buySet[akaBundleV2] = new Set()
-    buySet[akaBundleV1] = new Set()
-    buySet[akaGacha] = new Set()
-    buySet[akaOffer] = new Set()
-    buySet[akaMetaverseV2] = new Set()
-    buySet[akaMetaverseV1] = new Set()
+    let buyMap = new Map()
+    generateNewSet(buyMap, allMarketList)
+    // buySet[akaAuction] = new Set()
+    // buySet[akaBundleV2] = new Set()
+    // buySet[akaBundleV1] = new Set()
+    // buySet[akaGacha] = new Set()
+    // buySet[akaOffer] = new Set()
+    // buySet[akaMetaverseV2] = new Set()
+    // buySet[akaMetaverseV1] = new Set()
 
     let allBuySet = new Set()
 
     akaBuyData.forEach((buyData, idx) => {
-        buySet[buyData.target.address].add(buyData.sender.address)
+        buyMap[buyData.target.address].set.add(buyData.sender.address)
+        buyMap[buyData.target.address].count += 1
         allBuySet.add(buyData.sender.address)
         akaAllSet.add(buyData.sender.address)
     })
 
     document.getElementById("akaBuyer-result").innerHTML =
-        "共 <b>" + allBuySet.size + "</b> 位買家<br/>" +
+        "共 <b>" + akaBuyData.length + "</b> 次購買行為，共 <b>" + allBuySet.size + "</b> 位買家<br/>" +
         "詳細數量:<br/>" +
-        "akaMetaverse V2.1: " + buySet[akaMetaverseV2].size + " 位買家<br/>" +
-        "akaMetaverse V1: " + buySet[akaMetaverseV1].size + " 位買家<br/>" +
-        "akaOffer: " + buySet[akaOffer].size + " 位買家<br/>" +
-        "akaGacha: " + buySet[akaGacha].size + " 位買家<br/>" +
-        "akaBundle V1: " + buySet[akaBundleV1].size + " 位買家<br/>" +
-        "akaBundle V2: " + buySet[akaBundleV2].size + " 位買家<br/>" +
-        "akaAuction: " + buySet[akaAuction].size + " 位買家<br/>"
+        "akaMetaverse V2.1: " + buyMap[akaMetaverseV2].count + " 次購買， " + buyMap[akaMetaverseV2].set.size + " 位買家<br/>" +
+        "akaMetaverse V1: " + buyMap[akaMetaverseV1].count + " 次購買， " + buyMap[akaMetaverseV1].set.size + " 位買家<br/>" +
+        "akaOffer: " + buyMap[akaOffer].count + " 次喊價， " + buyMap[akaOffer].set.size + " 位買家<br/>" +
+        "akaGacha: " + buyMap[akaGacha].count + " 次購買， " + buyMap[akaGacha].set.size + " 位買家<br/>" +
+        "akaBundle V1: " + buyMap[akaBundleV1].count + " 次購買， " + buyMap[akaBundleV1].set.size + " 位買家<br/>" +
+        "akaBundle V2: " + buyMap[akaBundleV2].count + " 次購買， " + buyMap[akaBundleV2].set.size + " 位買家<br/>" +
+        "akaAuction: " + buyMap[akaAuction].count + " 次購買， " + buyMap[akaAuction].set.size + " 位買家<br/>"
 
     // sell
     const akaSellData = await getAPIData(transactionAPI,
         {
-            "target.in": allMarket,
+            "target.in": allMarketJoin,
             "entrypoint.in": "make_auction,make_bundle,make_gacha,fulfill_offer,swap",
             "status": "applied",
             "timestamp.ge": startDateZStr,
@@ -696,33 +711,35 @@ async function search() {
         }
     )
 
-    let sellSet = new Map()
-    sellSet[akaAuction] = new Set()
-    sellSet[akaBundleV2] = new Set()
-    sellSet[akaBundleV1] = new Set()
-    sellSet[akaGacha] = new Set()
-    sellSet[akaOffer] = new Set()
-    sellSet[akaMetaverseV2] = new Set()
-    sellSet[akaMetaverseV1] = new Set()
+    let sellMap = new Map()
+    generateNewSet(sellMap, allMarketList)
+    // sellMap[akaAuction] = new Set()
+    // sellMap[akaBundleV2] = new Set()
+    // sellMap[akaBundleV1] = new Set()
+    // sellMap[akaGacha] = new Set()
+    // sellMap[akaOffer] = new Set()
+    // sellMap[akaMetaverseV2] = new Set()
+    // sellMap[akaMetaverseV1] = new Set()
 
     let allSellSet = new Set()
 
     akaSellData.forEach((sellData, idx) => {
-        sellSet[sellData.target.address].add(sellData.sender.address)
+        sellMap[sellData.target.address].set.add(sellData.sender.address)
+        sellMap[sellData.target.address].count += 1
         allSellSet.add(sellData.sender.address)
         akaAllSet.add(sellData.sender.address)
     })
 
     document.getElementById("akaSeller-result").innerHTML =
-        "共 <b>" + allSellSet.size + "</b> 位賣家<br/>" +
+        "共 <b>" + akaSellData.length + "</b> 次販售行為，共 <b>" + allSellSet.size + "</b> 位賣家<br/>" +
         "詳細數量:<br/>" +
-        "akaMetaverse V2.1: " + sellSet[akaMetaverseV2].size + " 位賣家<br/>" +
-        "akaMetaverse V1: " + sellSet[akaMetaverseV1].size + " 位賣家<br/>" +
-        "akaOffer: " + sellSet[akaOffer].size + " 位賣家<br/>" +
-        "akaGacha: " + sellSet[akaGacha].size + " 位賣家<br/>" +
-        "akaBundle V1: " + sellSet[akaBundleV1].size + " 位賣家<br/>" +
-        "akaBundle V2: " + sellSet[akaBundleV2].size + " 位賣家<br/>" +
-        "akaAuction: " + sellSet[akaAuction].size + " 位賣家<br/>"
+        "akaMetaverse V2.1: " + sellMap[akaMetaverseV2].count + " 次上架， " + sellMap[akaMetaverseV2].set.size + " 位賣家<br/>" +
+        "akaMetaverse V1: " + sellMap[akaMetaverseV1].count + " 次上架， " + sellMap[akaMetaverseV1].set.size + " 位賣家<br/>" +
+        "akaOffer: " + sellMap[akaOffer].count + " 次完成交易， " + sellMap[akaOffer].set.size + " 位賣家<br/>" +
+        "akaGacha: " + sellMap[akaGacha].count + " 次上架， " + sellMap[akaGacha].set.size + " 位賣家<br/>" +
+        "akaBundle V1: " + sellMap[akaBundleV1].count + " 次上架， " + sellMap[akaBundleV1].set.size + " 位賣家<br/>" +
+        "akaBundle V2: " + sellMap[akaBundleV2].count + " 次上架， " + sellMap[akaBundleV2].set.size + " 位賣家<br/>" +
+        "akaAuction: " + sellMap[akaAuction].count + " 次上架， " + sellMap[akaAuction].set.size + " 位賣家<br/>"
 
     let allMintSet = new Set()
     akaMintData.forEach((mintData, idx) => {
@@ -732,6 +749,7 @@ async function search() {
 
 
     document.getElementById("akaPeople-result").innerHTML =
+        "共 <b>" + (akaBuyData.length-buyMap[akaOffer].count+sellMap[akaOffer].count) + "</b> 次交易<br/>" +
         "共 <b>" + allMintSet.size + "</b> 位鑄造NFT<br/>" +
         "共 <b>" + akaAllSet.size + "</b> 位網站使用人數"
 
