@@ -19,8 +19,13 @@ const akaOffer = "KT1J2C7BsYNnSjQsGoyrSXShhYGkrDDLVGDd"
 const akaMetaverseV2 = "KT1Dn3sambs7KZGW88hH2obZeSzfmCmGvpFo"
 const akaMetaverseV1 = "KT1HGL8vx7DP4xETVikL4LUYvFxSV19DxdFN"
 
+const akaDropV1 = "KT1QZ7nCoug95CDHT6JhcfwMKipJ7UxDaKo9"
+const akaDropV1_1 = "KT1Dag396rQYpBKPtSFEUDfJHUysvRyoQALi"
 const akaChargeV1 = "KT1TZLHB88sPT6z4w7oe13F1pgZpRc4tSHjL"
-const akaChargeV2 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
+const akaChargeV1_1 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
+
+const allDropJoin = [akaDropV1, akaDropV1_1].join(",")
+
 
 const akaBrokerV1 = "KT1PEdN7Ghy3WTzuWhQGdDM4NFD7J2xuZVNM"
 
@@ -30,7 +35,8 @@ let chargeFeeListV2 = []
 const akaDropChargeNameMap = {
     "AKADROP_MAKE_POOL_EDITION_TEZ": "版次費",
     "AKADROP_MAKE_POOL_TEZ": "開辦費",
-    "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費"
+    "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費",
+    "AKADROP_SEND_TEZ_EDITION_TEZ": "配發Tezos手續費"
 }
 
 const akaDAOQuipuExchange = "KT1Qej1k8WxPvBLUjGVtFXStgzQtcx3itSk5"
@@ -174,7 +180,7 @@ async function generateChargeFeeList() {
 
     const updateChargeV2Data = await getAPIData(transactionAPI,
         {
-            "target": akaChargeV2,
+            "target": akaChargeV1_1,
             "status": "applied",
             "entrypoint": "_update_charge_data",
             "sort.asc": "level"
@@ -327,8 +333,46 @@ async function fetchAkaDrop(startTimestamp, endTimestamp) {
     let chargeAmountMap = {}
     let detailList = []
 
+    let dropUserCount = 0
+    let dropUserSet = new Set()
+    const dropData = await getAPIData(transactionAPI,
+        {
+            "target.in": allDropJoin,
+            "status": "applied",
+            "entrypoint": "drop",
+            "timestamp.ge": startTimestamp,
+            "timestamp.lt": endTimestamp
+        }
+    )
+    for (let i = 0; i < dropData.length; i++) {
+        const dropDataList = dropData[i].parameter.value
+        for(let j = 0; j < dropDataList.length; j++)
+            dropUserSet.add(dropDataList[j].target)
+        dropUserCount += dropDataList.length
+    }
+    let makePoolUserSet = new Set()
+    const makePoolData = await getAPIData(transactionAPI,
+        {
+            "target.in": allDropJoin,
+            "status": "applied",
+            "entrypoint": "make_pool",
+            "timestamp.ge": startTimestamp,
+            "timestamp.lt": endTimestamp
+        }
+    )
+    for (let i = 0; i < makePoolData.length; i++)
+        makePoolUserSet.add(makePoolData[i].sender.address)
+
+    document.getElementById("akaDrop-user-result").innerHTML = 
+        "領取Drop次數：" + dropUserCount + " 次<br/>" + 
+        "領取Drop人數：" + dropUserSet.size + " 人<br/><br/>" + 
+        "製作Drop次數：" + makePoolData.length + " 次<br/>" + 
+        "製作Drop人數：" + makePoolUserSet.size + " 人"
+    
+
     const chargeDataV1 = await getAPIData(transactionAPI,
         {
+            "sender.in": allDropJoin,
             "target": akaChargeV1,
             "status": "applied",
             "entrypoint": "charge",
@@ -368,7 +412,8 @@ async function fetchAkaDrop(startTimestamp, endTimestamp) {
 
     const chargeDataV2 = await getAPIData(transactionAPI,
         {
-            "target": akaChargeV2,
+            "sender.in": allDropJoin,
+            "target": akaChargeV1_1,
             "status": "applied",
             "entrypoint": "charge",
             "timestamp.ge": startTimestamp,
@@ -427,8 +472,6 @@ async function fetchAkaDrop(startTimestamp, endTimestamp) {
         akaDropListResult += "<b>共計花費 " + (totalAmount / 1000000).toString() + " tez</b><br/>"
     }
     document.getElementById("akaDrop-result-list").innerHTML = akaDropListResult
-
-    // akaDropChargeNameMap
 
     setSuccess("akaDrop-hint", "Done!")
 }
