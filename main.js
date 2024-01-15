@@ -39,39 +39,13 @@ const akaDropChargeNameMap = {
     "AKADROP_SEND_TEZ_EDITION_TEZ": "配發Tezos手續費"
 }
 
+const DATE_ERROR_MSG = "ERROR! \"From Date\" or \"To Date\" CANNOT be empty."
+
 const akaDAOQuipuExchange = "KT1Qej1k8WxPvBLUjGVtFXStgzQtcx3itSk5"
 const priceCount = 5
 
 const allMarketList = [akaAuction, akaBundleV2, akaBundleV1, akaGacha, akaOffer, akaMetaverseV2, akaMetaverseV1]
 const allMarketJoin = allMarketList.join(",")
-
-const allResultID = [
-    "akaRec-result",
-    "akaBroker-result",
-    "akaBroker-result-list",
-    "akaSend-result",
-    "akaSend-result-list",
-    "akaDrop-result",
-    "akaDrop-result-list",
-    "tdRec-result",
-    "tdSend-result",
-    "tdSend-result-list",
-    "akaMint-result",
-    "akaBuyer-result",
-    "akaSeller-result",
-    "akaPeople-result",
-    "akaDAO-price-result",
-    "akaDAO-exchange-result"
-]
-
-const allHintID = [
-    "akaWallet-hint",
-    "akaBroker-hint",
-    "akaDrop-hint",
-    "tdWallet-hint",
-    "akaStat-hint",
-    "akaDAO-hint"
-]
 
 const ignoreCollectionList = [
     "hicetnunc",
@@ -234,18 +208,48 @@ async function getAliasMap(addresses){
     return result
 }
 
+let startDateZStr = "2000-01-01T16:00:00Z"
+let endDateZStr = "2000-01-01T16:00:00Z"
+let startDatePlusStr = "2000-01-01T16:00:00+00:00"
+let endDatePlusStr = "2000-01-01T16:00:00+00:00"
+
+function setStartEndTime(){
+    const inputStartDate = document.getElementById("startDate").value
+    const inputEndDate = document.getElementById("endDate").value
+
+    if(inputStartDate == "" || inputEndDate == ""){
+        alert(DATE_ERROR_MSG)
+        return false
+    }
+    
+
+    let utcStartDate = new Date(inputStartDate)
+    utcStartDate.setDate(utcStartDate.getDate() - 1)
+    const startDate = utcStartDate.getFullYear() + '-' + ('0' + (utcStartDate.getMonth() + 1)).slice(-2) + '-' + ('0' + (utcStartDate.getDate())).slice(-2)
+
+    let utcEndDate = new Date(inputEndDate)
+    utcEndDate.setDate(utcEndDate.getDate() - 1)
+    const endDate = utcEndDate.getFullYear() + '-' + ('0' + (utcEndDate.getMonth() + 1)).slice(-2) + '-' + ('0' + (utcEndDate.getDate())).slice(-2)
+
+    startDateZStr = startDate + "T16:00:00Z"
+    endDateZStr = endDate + "T16:00:00Z"
+    startDatePlusStr = startDate + "T16:00:00+00:00"
+    endDatePlusStr = endDate + "T16:00:00+00:00"
+    return true
+}
+
 function setFetching(elementId, msg = "Fetching data...") {
-    document.getElementById(elementId).className = "alert alert-primary"
+    document.getElementById(elementId).className = "hint alert alert-primary"
     document.getElementById(elementId).innerHTML = msg
 }
 
 function setSuccess(elementId, msg) {
-    document.getElementById(elementId).className = "alert alert-success"
+    document.getElementById(elementId).className = "hint alert alert-success"
     document.getElementById(elementId).innerHTML = msg
 }
 
 function setFailed(elementId, msg) {
-    document.getElementById(elementId).className = "alert alert-danger"
+    document.getElementById(elementId).className = "hint alert alert-danger"
     document.getElementById(elementId).innerHTML = msg
 }
 
@@ -271,11 +275,12 @@ function sendOpHashMap2Link(data) {
 }
 
 function clearResult() {
-    for (let i = 0; i < allResultID.length; i++)
-        document.getElementById(allResultID[i]).innerHTML = ""
-    for (let i = 0; i < allHintID.length; i++) {
-        document.getElementById(allHintID[i]).className = ""
-        document.getElementById(allHintID[i]).innerHTML = ""
+    for (const resultElement of document.getElementsByClassName("result"))
+        resultElement.innerHTML = ""
+    
+    for (const resultElement of document.getElementsByClassName("hint")){
+        resultElement.className = "hint"
+        resultElement.innerHTML = ""
     }
 
 }
@@ -325,228 +330,12 @@ function generateNewSet(setMap, addrList){
     })
 }
 
-async function fetchAkaDrop(startTimestamp, endTimestamp) {
-    setFetching("akaDrop-hint")
-
-    await generateChargeFeeList()
-
-    let chargeAmountMap = {}
-    let detailList = []
-
-    let dropUserCount = 0
-    let dropUserSet = new Set()
-    const dropData = await getAPIData(transactionAPI,
-        {
-            "target.in": allDropJoin,
-            "status": "applied",
-            "entrypoint": "drop",
-            "timestamp.ge": startTimestamp,
-            "timestamp.lt": endTimestamp
-        }
-    )
-    for (let i = 0; i < dropData.length; i++) {
-        const dropDataList = dropData[i].parameter.value
-        for(let j = 0; j < dropDataList.length; j++)
-            dropUserSet.add(dropDataList[j].target)
-        dropUserCount += dropDataList.length
-    }
-    let makePoolUserSet = new Set()
-    const makePoolData = await getAPIData(transactionAPI,
-        {
-            "target.in": allDropJoin,
-            "status": "applied",
-            "entrypoint": "make_pool",
-            "timestamp.ge": startTimestamp,
-            "timestamp.lt": endTimestamp
-        }
-    )
-    for (let i = 0; i < makePoolData.length; i++)
-        makePoolUserSet.add(makePoolData[i].sender.address)
-
-    document.getElementById("akaDrop-user-result").innerHTML = 
-        "領取Drop次數：" + dropUserCount + " 次<br/>" + 
-        "領取Drop人數：" + dropUserSet.size + " 人<br/><br/>" + 
-        "製作Drop次數：" + makePoolData.length + " 次<br/>" + 
-        "製作Drop人數：" + makePoolUserSet.size + " 人"
-    
-
-    const chargeDataV1 = await getAPIData(transactionAPI,
-        {
-            "sender.in": allDropJoin,
-            "target": akaChargeV1,
-            "status": "applied",
-            "entrypoint": "charge",
-            "timestamp.ge": startTimestamp,
-            "timestamp.lt": endTimestamp
-        }
-    )
-    for (let i = 0; i < chargeDataV1.length; i++) {
-        const chargeDataList = chargeDataV1[i].parameter.value
-        let feeIndex = -1
-        for (let j = 0; j < chargeFeeListV1.length; j++) {
-            if (Date.parse(chargeDataV1[i].timestamp) < chargeFeeListV1[j].startTime)
-                break
-            feeIndex += 1
-        }
-        let consumerName = chargeDataV1[i].initiator.alias
-        if (consumerName == undefined || consumerName == "")
-            consumerName = chargeDataV1[i].initiator.address
-        consumerDetail = {
-            "consumer": consumerName,
-            "address": chargeDataV1[i].initiator.address,
-            "opHash": chargeDataV1[i].hash,
-            "charge": {}
-        }
-        for (let j = 0; j < chargeDataList.length; j++) {
-            const chargeData = chargeDataList[j]
-            const feeData = chargeFeeListV1[feeIndex]["feeMap"][chargeData.charge_name]
-            const chargeAmount = parseInt(chargeData.amount)
-            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
-            if (!(chargeData.charge_name in chargeAmountMap))
-                chargeAmountMap[chargeData.charge_name] = 0
-            chargeAmountMap[chargeData.charge_name] += price
-            consumerDetail.charge[chargeData.charge_name] = price
-        }
-        detailList.push(consumerDetail)
+async function fetchAkaWallet(fetchTime){
+    if(fetchTime && !setStartEndTime()){
+        setFailed("akaWallet-hint", DATE_ERROR_MSG)
+        return
     }
 
-    const chargeDataV2 = await getAPIData(transactionAPI,
-        {
-            "sender.in": allDropJoin,
-            "target": akaChargeV1_1,
-            "status": "applied",
-            "entrypoint": "charge",
-            "timestamp.ge": startTimestamp,
-            "timestamp.lt": endTimestamp
-        }
-    )
-
-
-    for (let i = 0; i < chargeDataV2.length; i++) {
-        const chargeDataList = chargeDataV2[i].parameter.value
-        let feeIndex = -1
-        for (let j = 0; j < chargeFeeListV2.length; j++) {
-            if (Date.parse(chargeDataV2[i].timestamp) < chargeFeeListV2[j].startTime)
-                break
-            feeIndex += 1
-        }
-        let consumerName = chargeDataV2[i].initiator.alias
-        if (consumerName == undefined || consumerName == "")
-            consumerName = chargeDataV2[i].initiator.address
-        consumerDetail = {
-            "consumer": consumerName,
-            "address": chargeDataV2[i].initiator.address,
-            "opHash": chargeDataV2[i].hash,
-            "charge": {}
-        }
-        for (let j = 0; j < chargeDataList.length; j++) {
-            const chargeData = chargeDataList[j]
-            const feeData = chargeFeeListV2[feeIndex]["feeMap"][chargeData.charge_name]
-            const chargeAmount = parseInt(chargeData.amount)
-            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
-            if (!(chargeData.charge_name in chargeAmountMap))
-                chargeAmountMap[chargeData.charge_name] = 0
-            chargeAmountMap[chargeData.charge_name] += price
-            consumerDetail.charge[chargeData.charge_name] = price
-        }
-        detailList.push(consumerDetail)
-    }
-
-    let akaDropResult = ""
-    for (const [key, value] of Object.entries(chargeAmountMap))
-        akaDropResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
-    document.getElementById("akaDrop-result").innerHTML = akaDropResult
-
-
-    let akaDropListResult = ""
-    for (let i = 0; i < detailList.length; i++) {
-        const detailData = detailList[i]
-        akaDropListResult += "<a href=\"" + opHashLink + detailData.address + "\" target=\"_blank\">" + detailData.consumer + "</a> "
-        akaDropListResult += "<a href=\"" + opHashLink + detailData.opHash + "\" target=\"_blank\">製作Drop</a><br/>"
-        let totalAmount = 0
-        for (const [key, value] of Object.entries(detailData.charge))
-            if (value > 0) {
-                totalAmount += value
-                akaDropListResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
-            }
-        akaDropListResult += "<b>共計花費 " + (totalAmount / 1000000).toString() + " tez</b><br/>"
-    }
-    document.getElementById("akaDrop-result-list").innerHTML = akaDropListResult
-
-    setSuccess("akaDrop-hint", "Done!")
-}
-
-async function fetchAkaBroker(startTimestamp, endTimestamp){
-    setFetching("akaBroker-hint")
-
-    const brokerDataV1 = await getAPIData(transactionAPI,
-        {
-            "target": akaBrokerV1,
-            "sender.in": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX,tz1UQrVHHrcvqiwdNTicGfQ6xwQPwCDnEm1d",
-            "status": "applied",
-            "entrypoint": "buy_for",
-            "timestamp.ge": startTimestamp,
-            "timestamp.lt": endTimestamp
-        }
-    )
-
-    let buyerSet = new Set()
-    let totalAmount = 0
-    let resultList = []
-    let akaBrokerListResult = ""
-
-    for (let i = 0; i < brokerDataV1.length; i++) {
-        const buyForParam = brokerDataV1[i].parameter.value
-        resultList.push(
-            {
-                address: buyForParam.target,
-                hash: brokerDataV1[i].hash,
-                tezString: (brokerDataV1[i].amount / 1000000).toString()
-            }
-        )
-        
-        
-        buyerSet.add(buyForParam.target)
-        totalAmount += brokerDataV1[i].amount
-    }
-
-    const aliasMap = await getAliasMap(Array.from(buyerSet))
-
-    for(let i = 0; i < resultList.length; i++){
-        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].address + "\" target=\"_blank\">" + aliasMap[resultList[i].address] + "</a> "
-        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].hash + "\" target=\"_blank\">刷了 <b>" + resultList[i].tezString + "</b> tez</a><br/>"
-    }
-
-    document.getElementById("akaBroker-result").innerHTML = 
-    "共計 " + brokerDataV1.length.toString() + " 次刷卡購買<br/>" + 
-    "共有 " + buyerSet.size.toString() + " 人刷卡購買<br/>" + 
-    "共刷了 <b>" + (totalAmount / 1000000).toString() + "</b> tez <br/>"
-
-    document.getElementById("akaBroker-result-list").innerHTML = akaBrokerListResult
-
-    setSuccess("akaBroker-hint", "Done!")
-}
-
-async function search() {
-
-    clearResult()
-    const inputStartDate = document.getElementById("startDate").value
-    const inputEndDate = document.getElementById("endDate").value
-
-    let utcStartDate = new Date(inputStartDate)
-    utcStartDate.setDate(utcStartDate.getDate() - 1)
-    const startDate = utcStartDate.getFullYear() + '-' + ('0' + (utcStartDate.getMonth() + 1)).slice(-2) + '-' + ('0' + (utcStartDate.getDate())).slice(-2)
-
-    let utcEndDate = new Date(inputEndDate)
-    utcEndDate.setDate(utcEndDate.getDate() - 1)
-    const endDate = utcEndDate.getFullYear() + '-' + ('0' + (utcEndDate.getMonth() + 1)).slice(-2) + '-' + ('0' + (utcEndDate.getDate())).slice(-2)
-
-
-
-    const startDateZStr = startDate + "T16:00:00Z"
-    const endDateZStr = endDate + "T16:00:00Z"
-    const startDatePlusStr = startDate + "T16:00:00+00:00"
-    const endDatePlusStr = endDate + "T16:00:00+00:00"
 
     setFetching("akaWallet-hint")
 
@@ -610,10 +399,224 @@ async function search() {
     document.getElementById("akaSend-result-list").innerHTML = sendOpHashMap2Link(sendOpHashMap)
 
     setSuccess("akaWallet-hint", "Done!")
+}
 
-    await fetchAkaBroker(startDateZStr, endDateZStr)
+async function fetchAkaBroker(fetchTime){
+    if(fetchTime && !setStartEndTime()){
+        setFailed("akaBroker-hint", DATE_ERROR_MSG)
+        return
+    }
+    setFetching("akaBroker-hint")
 
-    await fetchAkaDrop(startDateZStr, endDateZStr)
+    const brokerDataV1 = await getAPIData(transactionAPI,
+        {
+            "target": akaBrokerV1,
+            "sender.in": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX,tz1UQrVHHrcvqiwdNTicGfQ6xwQPwCDnEm1d",
+            "status": "applied",
+            "entrypoint": "buy_for",
+            "timestamp.ge": startDateZStr,
+            "timestamp.lt": endDateZStr
+        }
+    )
+
+    let buyerSet = new Set()
+    let totalAmount = 0
+    let resultList = []
+    let akaBrokerListResult = ""
+
+    for (let i = 0; i < brokerDataV1.length; i++) {
+        const buyForParam = brokerDataV1[i].parameter.value
+        resultList.push(
+            {
+                address: buyForParam.target,
+                hash: brokerDataV1[i].hash,
+                tezString: (brokerDataV1[i].amount / 1000000).toString()
+            }
+        )
+        
+        
+        buyerSet.add(buyForParam.target)
+        totalAmount += brokerDataV1[i].amount
+    }
+
+    const aliasMap = await getAliasMap(Array.from(buyerSet))
+
+    for(let i = 0; i < resultList.length; i++){
+        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].address + "\" target=\"_blank\">" + aliasMap[resultList[i].address] + "</a> "
+        akaBrokerListResult += "<a href=\"" + opHashLink + resultList[i].hash + "\" target=\"_blank\">刷了 <b>" + resultList[i].tezString + "</b> tez</a><br/>"
+    }
+
+    document.getElementById("akaBroker-result").innerHTML = 
+    "共計 " + brokerDataV1.length.toString() + " 次刷卡購買<br/>" + 
+    "共有 " + buyerSet.size.toString() + " 人刷卡購買<br/>" + 
+    "共刷了 <b>" + (totalAmount / 1000000).toString() + "</b> tez <br/>"
+
+    document.getElementById("akaBroker-result-list").innerHTML = akaBrokerListResult
+
+    setSuccess("akaBroker-hint", "Done!")
+}
+
+async function fetchAkaDrop(fetchTime) {
+    if(fetchTime && !setStartEndTime()){
+        setFailed("akaDrop-hint", DATE_ERROR_MSG)
+        return
+    }
+
+    setFetching("akaDrop-hint")
+
+    await generateChargeFeeList()
+
+    let chargeAmountMap = {}
+    let detailList = []
+
+    let dropUserCount = 0
+    let dropUserSet = new Set()
+    const dropData = await getAPIData(transactionAPI,
+        {
+            "target.in": allDropJoin,
+            "status": "applied",
+            "entrypoint": "drop",
+            "timestamp.ge": startDateZStr,
+            "timestamp.lt": endDateZStr
+        }
+    )
+    for (let i = 0; i < dropData.length; i++) {
+        const dropDataList = dropData[i].parameter.value
+        for(let j = 0; j < dropDataList.length; j++)
+            dropUserSet.add(dropDataList[j].target)
+        dropUserCount += dropDataList.length
+    }
+    let makePoolUserSet = new Set()
+    const makePoolData = await getAPIData(transactionAPI,
+        {
+            "target.in": allDropJoin,
+            "status": "applied",
+            "entrypoint": "make_pool",
+            "timestamp.ge": startDateZStr,
+            "timestamp.lt": endDateZStr
+        }
+    )
+    for (let i = 0; i < makePoolData.length; i++)
+        makePoolUserSet.add(makePoolData[i].sender.address)
+
+    document.getElementById("akaDrop-user-result").innerHTML = 
+        "領取Drop次數：" + dropUserCount + " 次<br/>" + 
+        "領取Drop人數：" + dropUserSet.size + " 人<br/><br/>" + 
+        "製作Drop次數：" + makePoolData.length + " 次<br/>" + 
+        "製作Drop人數：" + makePoolUserSet.size + " 人"
+    
+
+    const chargeDataV1 = await getAPIData(transactionAPI,
+        {
+            "sender.in": allDropJoin,
+            "target": akaChargeV1,
+            "status": "applied",
+            "entrypoint": "charge",
+            "timestamp.ge": startDateZStr,
+            "timestamp.lt": endDateZStr
+        }
+    )
+    for (let i = 0; i < chargeDataV1.length; i++) {
+        const chargeDataList = chargeDataV1[i].parameter.value
+        let feeIndex = -1
+        for (let j = 0; j < chargeFeeListV1.length; j++) {
+            if (Date.parse(chargeDataV1[i].timestamp) < chargeFeeListV1[j].startTime)
+                break
+            feeIndex += 1
+        }
+        let consumerName = chargeDataV1[i].initiator.alias
+        if (consumerName == undefined || consumerName == "")
+            consumerName = chargeDataV1[i].initiator.address
+        consumerDetail = {
+            "consumer": consumerName,
+            "address": chargeDataV1[i].initiator.address,
+            "opHash": chargeDataV1[i].hash,
+            "charge": {}
+        }
+        for (let j = 0; j < chargeDataList.length; j++) {
+            const chargeData = chargeDataList[j]
+            const feeData = chargeFeeListV1[feeIndex]["feeMap"][chargeData.charge_name]
+            const chargeAmount = parseInt(chargeData.amount)
+            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
+            if (!(chargeData.charge_name in chargeAmountMap))
+                chargeAmountMap[chargeData.charge_name] = 0
+            chargeAmountMap[chargeData.charge_name] += price
+            consumerDetail.charge[chargeData.charge_name] = price
+        }
+        detailList.push(consumerDetail)
+    }
+
+    const chargeDataV2 = await getAPIData(transactionAPI,
+        {
+            "sender.in": allDropJoin,
+            "target": akaChargeV1_1,
+            "status": "applied",
+            "entrypoint": "charge",
+            "timestamp.ge": startDateZStr,
+            "timestamp.lt": endDateZStr
+        }
+    )
+
+
+    for (let i = 0; i < chargeDataV2.length; i++) {
+        const chargeDataList = chargeDataV2[i].parameter.value
+        let feeIndex = -1
+        for (let j = 0; j < chargeFeeListV2.length; j++) {
+            if (Date.parse(chargeDataV2[i].timestamp) < chargeFeeListV2[j].startTime)
+                break
+            feeIndex += 1
+        }
+        let consumerName = chargeDataV2[i].initiator.alias
+        if (consumerName == undefined || consumerName == "")
+            consumerName = chargeDataV2[i].initiator.address
+        consumerDetail = {
+            "consumer": consumerName,
+            "address": chargeDataV2[i].initiator.address,
+            "opHash": chargeDataV2[i].hash,
+            "charge": {}
+        }
+        for (let j = 0; j < chargeDataList.length; j++) {
+            const chargeData = chargeDataList[j]
+            const feeData = chargeFeeListV2[feeIndex]["feeMap"][chargeData.charge_name]
+            const chargeAmount = parseInt(chargeData.amount)
+            const price = Math.ceil(chargeAmount / feeData.per) * feeData.price
+            if (!(chargeData.charge_name in chargeAmountMap))
+                chargeAmountMap[chargeData.charge_name] = 0
+            chargeAmountMap[chargeData.charge_name] += price
+            consumerDetail.charge[chargeData.charge_name] = price
+        }
+        detailList.push(consumerDetail)
+    }
+
+    let akaDropResult = ""
+    for (const [key, value] of Object.entries(chargeAmountMap))
+        akaDropResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
+    document.getElementById("akaDrop-result").innerHTML = akaDropResult
+
+
+    let akaDropListResult = ""
+    for (let i = 0; i < detailList.length; i++) {
+        const detailData = detailList[i]
+        akaDropListResult += "<a href=\"" + opHashLink + detailData.address + "\" target=\"_blank\">" + detailData.consumer + "</a> "
+        akaDropListResult += "<a href=\"" + opHashLink + detailData.opHash + "\" target=\"_blank\">製作Drop</a><br/>"
+        let totalAmount = 0
+        for (const [key, value] of Object.entries(detailData.charge))
+            if (value > 0) {
+                totalAmount += value
+                akaDropListResult += akaDropChargeNameMap[key] + "：" + (value / 1000000).toString() + " tez<br/>"
+            }
+        akaDropListResult += "<b>共計花費 " + (totalAmount / 1000000).toString() + " tez</b><br/>"
+    }
+    document.getElementById("akaDrop-result-list").innerHTML = akaDropListResult
+
+    setSuccess("akaDrop-hint", "Done!")
+}
+
+async function fetchTDWallet(fetchTime){
+    if(fetchTime && !setStartEndTime()){
+        setFailed("tdWallet-hint", DATE_ERROR_MSG)
+        return
+    }
 
     setFetching("tdWallet-hint")
 
@@ -676,8 +679,15 @@ async function search() {
         + tezMap2String(sendMap)
     document.getElementById("tdSend-result-list").innerHTML = sendOpHashMap2Link(sendOpHashMap)
 
-
     setSuccess("tdWallet-hint", "Done!")
+}
+
+async function fetchAkaStat(fetchTime){
+    if(fetchTime && !setStartEndTime()){
+        setFailed("akaStat-hint", DATE_ERROR_MSG)
+        return
+    }
+
     setFetching("akaStat-hint")
 
     // mint
@@ -715,13 +725,6 @@ async function search() {
     let akaAllSet = new Set()
     let buyMap = new Map()
     generateNewSet(buyMap, allMarketList)
-    // buySet[akaAuction] = new Set()
-    // buySet[akaBundleV2] = new Set()
-    // buySet[akaBundleV1] = new Set()
-    // buySet[akaGacha] = new Set()
-    // buySet[akaOffer] = new Set()
-    // buySet[akaMetaverseV2] = new Set()
-    // buySet[akaMetaverseV1] = new Set()
 
     let allBuySet = new Set()
 
@@ -756,13 +759,6 @@ async function search() {
 
     let sellMap = new Map()
     generateNewSet(sellMap, allMarketList)
-    // sellMap[akaAuction] = new Set()
-    // sellMap[akaBundleV2] = new Set()
-    // sellMap[akaBundleV1] = new Set()
-    // sellMap[akaGacha] = new Set()
-    // sellMap[akaOffer] = new Set()
-    // sellMap[akaMetaverseV2] = new Set()
-    // sellMap[akaMetaverseV1] = new Set()
 
     let allSellSet = new Set()
 
@@ -797,6 +793,14 @@ async function search() {
         "共 <b>" + akaAllSet.size + "</b> 位網站使用人數"
 
     setSuccess("akaStat-hint", "Done!")
+}
+
+async function fetchAkaDAO(fetchTime){
+    if(fetchTime && !setStartEndTime()){
+        setFailed("akaDAO-hint", DATE_ERROR_MSG)
+        return
+    }
+
     setFetching("akaDAO-hint")
     // akaDAO
     const akaDAOQuipuData = await getAPIData(transactionAPI,
@@ -861,12 +865,35 @@ async function search() {
     setSuccess("akaDAO-hint", "Done!")
 }
 
+async function search() {
+
+    clearResult()
+    if(!setStartEndTime()){
+        setFailed("akaWallet-hint", DATE_ERROR_MSG)
+        return
+    }
+
+    await fetchAkaWallet(false)
+
+    await fetchAkaBroker(false)
+
+    await fetchAkaDrop(false)
+
+    await fetchTDWallet(false)
+    
+    await fetchAkaStat(false)
+
+    await fetchAkaDAO(false)
+    
+    
+}
+
 
 async function fetchHolders() {
 
     document.getElementById("akaCollectionSection").style.display = "block"
     document.getElementById("akaCollection-result").innerHTML = ""
-    document.getElementById("akaCollection-hint").className = ""
+    document.getElementById("akaCollection-hint").className = "hint"
     document.getElementById("akaCollection-hint").innerHTML = ""
 
     const collectionInfo = await fetch(collectionAPI).then(response => response.json())
@@ -913,21 +940,6 @@ async function fetchHolders() {
 
 }
 
-
-async function test(){
-    fetchAkaBroker("2023-09-30T16:00:00Z", "2023-11-30T16:00:00Z")
-    // const collectData = await getAPIData(transactionAPI,
-    //     {
-    //         "target": akaMetaverseV2,
-    //         "entrypoint": "collect",
-    //         "status": "applied"
-    //     }
-    // )
-    // let addrSet = new Set()
-    // for(let i = 0; i < collectData.length; i++)
-    //     addrSet.add(collectData[i].sender.address)
-    
-    // console.log(addrSet)
-    // const result = await getAliasMap(Array.from(addrSet))
-    // console.log(result)
-}
+// async function test(){
+//     fetchAkaBroker("2023-09-30T16:00:00Z", "2023-11-30T16:00:00Z")
+// }
