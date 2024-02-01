@@ -21,10 +21,11 @@ const akaMetaverseV1 = "KT1HGL8vx7DP4xETVikL4LUYvFxSV19DxdFN"
 
 const akaDropV1 = "KT1QZ7nCoug95CDHT6JhcfwMKipJ7UxDaKo9"
 const akaDropV1_1 = "KT1Dag396rQYpBKPtSFEUDfJHUysvRyoQALi"
+const akaDropV1_2 = "KT1GyHsoewbUGk4wpAVZFUYpP2VjZPqo1qBf"
 const akaChargeV1 = "KT1TZLHB88sPT6z4w7oe13F1pgZpRc4tSHjL"
 const akaChargeV1_1 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
 
-const allDropJoin = [akaDropV1, akaDropV1_1].join(",")
+const allDropJoin = [akaDropV1, akaDropV1_1, akaDropV1_2].join(",")
 
 
 const akaBrokerV1 = "KT1PEdN7Ghy3WTzuWhQGdDM4NFD7J2xuZVNM"
@@ -35,8 +36,7 @@ let chargeFeeListV2 = []
 const akaDropChargeNameMap = {
     "AKADROP_MAKE_POOL_EDITION_TEZ": "版次費",
     "AKADROP_MAKE_POOL_TEZ": "開辦費",
-    "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費",
-    "AKADROP_SEND_TEZ_EDITION_TEZ": "配發Tezos手續費"
+    "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費"
 }
 
 const DATE_ERROR_MSG = "ERROR! \"From Date\" or \"To Date\" CANNOT be empty."
