@@ -142,8 +142,8 @@ async function generateChargeFeeList() {
         for (let j = 0; j < updateData.length; j++) {
             const feeData = updateData[j]
             feeMap[feeData.charge_type] = {
-                "per": parseInt(feeData.charge_data.per),
-                "price": parseInt(feeData.charge_data.price.tez)
+                "per": parseInt(feeData.charge_data?feeData.charge_data.per:1),
+                "price": parseInt(feeData.charge_data?feeData.charge_data.price.tez:0)
             }
         }
         chargeFeeListV1.push({
@@ -166,8 +166,8 @@ async function generateChargeFeeList() {
         for (let j = 0; j < updateData.length; j++) {
             const feeData = updateData[j]
             feeMap[feeData["charge_type"]] = {
-                "per": parseInt(feeData.charge_data.per),
-                "price": parseInt(feeData.charge_data.price.tez)
+                "per": parseInt(feeData.charge_data?feeData.charge_data.per:1),
+                "price": parseInt(feeData.charge_data?feeData.charge_data.price.tez:0)
             }
         }
         chargeFeeListV2.push({
