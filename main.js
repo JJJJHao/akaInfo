@@ -35,6 +35,7 @@ let chargeFeeListV2 = []
 
 const akaDropChargeNameMap = {
     "AKADROP_MAKE_POOL_EDITION_TEZ": "版次費",
+    "AKADROP_MAKE_POOL_LOW_EDITION_TEZ": "低版版次費",
     "AKADROP_MAKE_POOL_TEZ": "開辦費",
     "AKADROP_REFRESHABLE_TEZ": "動態更新QRCode費"
 }
