@@ -346,7 +346,7 @@ async function fetchAkaWallet(fetchTime){
             "target": akaManager,
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     let recMap = {}
@@ -374,7 +374,7 @@ async function fetchAkaWallet(fetchTime){
             "sender": akaManager,
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     let sendMap = {}
@@ -416,7 +416,7 @@ async function fetchAkaBroker(fetchTime){
             "status": "applied",
             "entrypoint": "buy_for",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
 
@@ -478,7 +478,7 @@ async function fetchAkaDrop(fetchTime) {
             "status": "applied",
             "entrypoint": "drop",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     for (let i = 0; i < dropData.length; i++) {
@@ -494,7 +494,7 @@ async function fetchAkaDrop(fetchTime) {
             "status": "applied",
             "entrypoint": "make_pool",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     for (let i = 0; i < makePoolData.length; i++)
@@ -514,7 +514,7 @@ async function fetchAkaDrop(fetchTime) {
             "status": "applied",
             "entrypoint": "charge",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     for (let i = 0; i < chargeDataV1.length; i++) {
@@ -554,7 +554,7 @@ async function fetchAkaDrop(fetchTime) {
             "status": "applied",
             "entrypoint": "charge",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
 
@@ -627,7 +627,7 @@ async function fetchTDWallet(fetchTime){
             "target": tdManager,
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     recMap = {}
@@ -655,7 +655,7 @@ async function fetchTDWallet(fetchTime){
             "sender": tdManager,
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     sendMap = {}
@@ -698,7 +698,7 @@ async function fetchAkaStat(fetchTime){
             "entrypoint": "mint_akaOBJ",
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     const mintAmount = akaMintData.length
@@ -720,7 +720,7 @@ async function fetchAkaStat(fetchTime){
             "entrypoint.in": "bid,direct_purchase,collect_bundle,collect_gacha,make_offer,collect",
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     let akaAllSet = new Set()
@@ -754,7 +754,7 @@ async function fetchAkaStat(fetchTime){
             "entrypoint.in": "make_auction,make_bundle,make_gacha,fulfill_offer,swap",
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
 
@@ -810,7 +810,7 @@ async function fetchAkaDAO(fetchTime){
             "entrypoint.in": "tezToTokenPayment,tokenToTezPayment",
             "status": "applied",
             "timestamp.ge": startDateZStr,
-            "timestamp.lt": endDateZStr
+            "timestamp.le": endDateZStr
         }
     )
     if (akaDAOQuipuData.length > 0) {
