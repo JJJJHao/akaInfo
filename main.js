@@ -27,6 +27,11 @@ const akaChargeV1_1 = "KT1NsaxAY49uGVMUuuBHHZa6dznzGCjVBxNm"
 
 const allDropJoin = [akaDropV1, akaDropV1_1, akaDropV1_2].join(",")
 
+const akaBrokerCallers = [
+    "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX",
+    "tz1UQrVHHrcvqiwdNTicGfQ6xwQPwCDnEm1d",
+    "tz1KkPS1TWFyDWfQwrdvmTmsCLUNMegDrrSi"
+]
 
 const akaBrokerV1 = "KT1PEdN7Ghy3WTzuWhQGdDM4NFD7J2xuZVNM"
 
@@ -412,7 +417,7 @@ async function fetchAkaBroker(fetchTime){
     const brokerDataV1 = await getAPIData(transactionAPI,
         {
             "target": akaBrokerV1,
-            "sender.in": "KT1PALN4Gukz39weupsJGwziieTVJtqt3XxX,tz1UQrVHHrcvqiwdNTicGfQ6xwQPwCDnEm1d",
+            "sender.in": akaBrokerCallers.join(","),
             "status": "applied",
             "entrypoint": "buy_for",
             "timestamp.ge": startDateZStr,
